@@ -4,6 +4,7 @@
 
 import sys
 from PIL import Image
+from pathlib import Path
 
 pieces = {
     'bar_1x4': 4,
@@ -11,8 +12,6 @@ pieces = {
     'bar_1x16': 16,
     'pixel': 1
 }
-
-filename = "hi.png"
 
 def divide_by_piece(nb_contigus):
     mapping = {}
@@ -25,8 +24,23 @@ def divide_by_piece(nb_contigus):
     return mapping
 
 if __name__ == "__main__":
-    img = Image.open(filename)
-    print('Image information:\n', img.format, img.size, img.mode)
+    if len(sys.argv) < 2:
+        print('You have to provide a filename in argument')
+        quit()
+
+    filename = sys.argv[1]
+    if not Path(filename).exists():
+        print('You have to provide a REAL filename in argument')
+        quit()
+
+    try:
+        img = Image.open(filename)
+    except OSError as err:
+        print('You have to provide an Image: ', err)
+        quit()
+
+    print('Processing with: "', filename, '"\n',
+          img.format, img.size, img.mode)
     pixels = img.load()
     mapping = []
     colors = {}
@@ -80,3 +94,4 @@ if __name__ == "__main__":
                     column += size
         #quit()
     img_dest.save("legoify_" + filename);
+    print('The proccessed image is: ', "legoify_" + filename)
