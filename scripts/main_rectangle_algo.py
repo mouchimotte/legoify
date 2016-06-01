@@ -170,39 +170,13 @@ if __name__ == "__main__":
     pixels = img.load()
     # colors_stats(img, pixels)
 
+    # divide by rectangles
     mapping = divide_by_rectangle(img, pixels)
-
-    #debug rectangles
-    # img_dest = Image.new("RGB", (img.size[0] * 10, img.size[1] * 10))
-    # pixels_dest = img_dest.load()
-    # for rectangle in mapping:
-    #     for w in range(rectangle['size'][0] * 10):
-    #         for h in range(rectangle['size'][1] * 10):
-    #             column = rectangle['position'][0] * 10 + w
-    #             line = rectangle['position'][1] * 10 + h
-    #             color = rectangle['color']
-    #             #border top and left in FUSHIA
-    #             if w == 0 or h == 0:
-    #                 color = (255, 0, 255)
-    #             #border bottom and right in GREEN
-    #             if w == rectangle['size'][0] * 10 - 1 \
-    #                or h == rectangle['size'][1] * 10 - 1:
-    #                 color = (0, 255, 0)
-    #             pixels_dest[column, line] = color
-    # img_dest.save("debug_rectanglify_" + filename);
-    #debug end
-
+    # divide rectangles by brick
     for rectangle in mapping:
         rectangle['bricks'] = divide_by_brick(rectangle['size'])
 
-    # import pprint
-    # pprint.pprint(mapping)
-    # quit()
-
-    # import json
-    # print(json.dumps(mapping, indent=4))
-
-    #debug mapping
+    #debug brick by draw it into a new image
     img_dest = Image.new("RGB", (img.size[0] * 10, img.size[1] * 10))
     pixels_dest = img_dest.load()
     for rectangle in mapping:
@@ -228,4 +202,5 @@ if __name__ == "__main__":
                         color = (0, 255, 0)
                     pixels_dest[column, line] = color
     img_dest.save("debug_mapping_" + filename);
+    print('Processed debug image are: "debug_mapping_' + filename + '"')
     #debug end
