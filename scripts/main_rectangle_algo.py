@@ -6,7 +6,8 @@ import sys
 from PIL import Image
 from pathlib import Path
 
-bricks = [4, 2, 16, 1];
+bricks = {(255, 255, 255): [2, 16, 1],
+          "all": [1, 4]}
 
 def colors_stats(img, pixels):
     colors = {}
@@ -36,12 +37,13 @@ def bricks_stats(mapping):
     import pprint
     pprint.pprint(s)
 
-def add_horizontal(position, length):
+def add_horizontal(color, position, length):
     mapping = []
     pointer = 0
 
     #fill the line by bricks from the highter length to the smalest length
-    for brick_length in sorted(bricks, reverse=True):
+    for brick_length in sorted(bricks[color if color in bricks else "all"],
+                               reverse=True):
         #while the size of brick can fit in the length
         while brick_length <= length:
             mapping.append({'position': (position[0] + pointer, position[1]),
@@ -53,12 +55,13 @@ def add_horizontal(position, length):
     #returning the mapping
     return mapping, pointer
 
-def add_vertical(position, length):
+def add_vertical(color, position, length):
     mapping = []
     pointer = 0
 
     #fill the column by bricks from the highter length to the smalest length
-    for brick_length in sorted(bricks, reverse=True):
+    for brick_length in sorted(bricks[color if color in bricks else "all"],
+                               reverse=True):
         #while the size of brick can fit in the length
         while brick_length <= length:
             mapping.append({'position': (position[0], position[1] + pointer),
@@ -70,18 +73,19 @@ def add_vertical(position, length):
     #returning the mapping
     return mapping
 
-def divide_by_brick(size):
+def divide_by_brick(size, color):
     mapping = []
     used_pixels = {}
     column, line = 0, 0
     width, height = size
 
     while column < width and line < height:
-        m, c = add_horizontal((column, line),
+        m, c = add_horizontal(color,
+                              (column, line),
                               width if line + 1 == height else width - 1)
         mapping, column = mapping + m, column + c
         if column + 1 == width:
-            mapping += add_vertical((column, line), height - line)
+            mapping += add_vertical(color, (column, line), height - line)
             width -= 1
 
         #otherwise we do the same at the next line
@@ -218,7 +222,8 @@ if __name__ == "__main__":
     mapping = divide_by_rectangle(img, pixels)
     # divide rectangles by brick
     for rectangle in mapping:
-        rectangle['bricks'] = divide_by_brick(rectangle['size'])
+        rectangle['bricks'] = divide_by_brick(rectangle['size'],
+                                              rectangle['color'])
 
     #drawing an image with the mapping
     draw_mapping(img, mapping)
