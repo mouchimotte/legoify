@@ -20,6 +20,22 @@ def colors_stats(img, pixels):
         pct = len(colors[color]) / (img.size[0] * img.size[1])
         print('{} > {:.2%} with {} pixels'.format(color, pct, len(colors[color])))
 
+def bricks_stats(mapping):
+    s = {'total_brick': 0,
+         'by_color': {}}
+    for rectangle in mapping:
+        s['total_brick'] += len(rectangle['bricks'])
+        if rectangle['color'] not in s['by_color']:
+            s['by_color'][rectangle['color']] = {'total_brick': 0,
+                                                 'by_length': {}}
+        for brick in rectangle['bricks']:
+            if brick['length'] not in s['by_color'][rectangle['color']]['by_length']:
+                s['by_color'][rectangle['color']]['by_length'][brick['length']] = 0
+            s['by_color'][rectangle['color']]['total_brick'] += 1
+            s['by_color'][rectangle['color']]['by_length'][brick['length']] += 1
+    import pprint
+    pprint.pprint(s)
+
 def add_horizontal(position, length):
     mapping = []
     pointer = 0
@@ -149,34 +165,7 @@ def divide_by_rectangle(img, pixels):
             column += width
     return rectangles
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print('You have to provide a filename in argument')
-        quit()
-
-    filename = sys.argv[1]
-    if not Path(filename).exists():
-        print('You have to provide a REAL filename in argument')
-        quit()
-
-    try:
-        img = Image.open(filename)
-    except OSError as err:
-        print('You have to provide an Image: ', err)
-        quit()
-
-    print('Processing with: "', filename, '"\n',
-          img.format, img.size, img.mode)
-    pixels = img.load()
-    # colors_stats(img, pixels)
-
-    # divide by rectangles
-    mapping = divide_by_rectangle(img, pixels)
-    # divide rectangles by brick
-    for rectangle in mapping:
-        rectangle['bricks'] = divide_by_brick(rectangle['size'])
-
-    #debug brick by draw it into a new image
+def draw_mapping(img, mapping):
     img_dest = Image.new("RGB", (img.size[0] * 10, img.size[1] * 10))
     pixels_dest = img_dest.load()
     for rectangle in mapping:
@@ -202,5 +191,37 @@ if __name__ == "__main__":
                         color = (0, 255, 0)
                     pixels_dest[column, line] = color
     img_dest.save("debug_mapping_" + filename);
-    print('Processed debug image are: "debug_mapping_' + filename + '"')
-    #debug end
+    print('Image with mapping is: "mapping_' + filename + '"')
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print('You have to provide a filename in argument')
+        quit()
+
+    filename = sys.argv[1]
+    if not Path(filename).exists():
+        print('You have to provide a REAL filename in argument')
+        quit()
+
+    try:
+        img = Image.open(filename)
+    except OSError as err:
+        print('You have to provide an Image: ', err)
+        quit()
+
+    print('Processing with: "', filename, '"\n',
+          img.format, img.size, img.mode)
+    pixels = img.load()
+    colors_stats(img, pixels)
+
+    # divide by rectangles
+    mapping = divide_by_rectangle(img, pixels)
+    # divide rectangles by brick
+    for rectangle in mapping:
+        rectangle['bricks'] = divide_by_brick(rectangle['size'])
+
+    #drawing an image with the mapping
+    draw_mapping(img, mapping)
+
+    #bricks stats
+    bricks_stats(mapping)
