@@ -7,6 +7,7 @@ from PIL import Image
 from pathlib import Path
 
 bricks = {(255, 255, 255): [2, 16, 1],
+          (139, 149, 169): [1, 4, 16],
           "all": [1, 4]}
 
 def colors_stats(img, pixels):
@@ -16,7 +17,7 @@ def colors_stats(img, pixels):
             if "{0}".format(pixels[column, line]) not in colors:
                 colors["{0}".format(pixels[column, line])] = []
             colors["{0}".format(pixels[column, line])].append([column, line])
-    print("Colors: ")
+    print("\nColors:")
     for color in colors:
         pct = len(colors[color]) / (img.size[0] * img.size[1])
         print('{} > {:.2%} with {} pixels'.format(color, pct, len(colors[color])))
@@ -34,6 +35,7 @@ def bricks_stats(mapping):
                 s['by_color'][rectangle['color']]['by_length'][brick['length']] = 0
             s['by_color'][rectangle['color']]['total_brick'] += 1
             s['by_color'][rectangle['color']]['by_length'][brick['length']] += 1
+    print("\nBricks by colors:")
     import pprint
     pprint.pprint(s)
 
@@ -169,7 +171,7 @@ def divide_by_rectangle(img, pixels):
             column += width
     return rectangles
 
-def draw_mapping(img, mapping):
+def draw_mapping(img, mapping, filename):
     img_dest = Image.new("RGB", (img.size[0] * 10, img.size[1] * 10))
     pixels_dest = img_dest.load()
     for rectangle in mapping:
@@ -195,7 +197,7 @@ def draw_mapping(img, mapping):
                         color = (0, 255, 0)
                     pixels_dest[column, line] = color
     img_dest.save("mapping_" + filename);
-    print('Image with mapping is: "mapping_' + filename + '"')
+    print('\nImage with mapping is: "mapping_' + filename + '"')
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -226,7 +228,7 @@ if __name__ == "__main__":
                                               rectangle['color'])
 
     #drawing an image with the mapping
-    draw_mapping(img, mapping)
+    draw_mapping(img, mapping, filename)
 
     #bricks stats
     bricks_stats(mapping)
