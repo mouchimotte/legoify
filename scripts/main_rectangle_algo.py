@@ -194,7 +194,7 @@ def draw_mapping(img, mapping):
                        or h == height * 10 - 1:
                         color = (0, 255, 0)
                     pixels_dest[column, line] = color
-    img_dest.save("debug_mapping_" + filename);
+    img_dest.save("mapping_" + filename);
     print('Image with mapping is: "mapping_' + filename + '"')
 
 if __name__ == "__main__":
