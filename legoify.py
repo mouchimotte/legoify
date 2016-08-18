@@ -5,10 +5,8 @@
 import sys
 from PIL import Image
 from pathlib import Path
+from argparse import ArgumentParser
 
-bricks = {(255, 255, 255): [2, 16, 1],
-          (139, 149, 169): [1, 4, 16],
-          "all": [1, 4]}
 
 def colors_stats(img, pixels):
     colors = {}
@@ -17,7 +15,7 @@ def colors_stats(img, pixels):
             if "{0}".format(pixels[column, line]) not in colors:
                 colors["{0}".format(pixels[column, line])] = []
             colors["{0}".format(pixels[column, line])].append([column, line])
-    print("\nColors:")
+    print("Colors:")
     for color in colors:
         pct = len(colors[color]) / (img.size[0] * img.size[1])
         print('{} > {:.2%} with {} pixels'.format(color, pct, len(colors[color])))
@@ -35,16 +33,16 @@ def bricks_stats(mapping):
                 s['by_color'][rectangle['color']]['by_length'][brick['length']] = 0
             s['by_color'][rectangle['color']]['total_brick'] += 1
             s['by_color'][rectangle['color']]['by_length'][brick['length']] += 1
-    print("\nBricks by colors:")
+    print("Bricks by colors:")
     import pprint
     pprint.pprint(s)
 
-def add_horizontal(color, position, length):
+def add_horizontal(conf, color, position, length):
     mapping = []
     pointer = 0
 
     #fill the line by bricks from the highter length to the smalest length
-    for brick_length in sorted(bricks[color if color in bricks else "all"],
+    for brick_length in sorted(conf[color if color in conf else "all"],
                                reverse=True):
         #while the size of brick can fit in the length
         while brick_length <= length:
@@ -57,12 +55,12 @@ def add_horizontal(color, position, length):
     #returning the mapping
     return mapping, pointer
 
-def add_vertical(color, position, length):
+def add_vertical(conf, color, position, length):
     mapping = []
     pointer = 0
 
     #fill the column by bricks from the highter length to the smalest length
-    for brick_length in sorted(bricks[color if color in bricks else "all"],
+    for brick_length in sorted(conf[color if color in conf else "all"],
                                reverse=True):
         #while the size of brick can fit in the length
         while brick_length <= length:
@@ -75,19 +73,20 @@ def add_vertical(color, position, length):
     #returning the mapping
     return mapping
 
-def divide_by_brick(size, color):
+def divide_by_brick(conf, size, color):
     mapping = []
     used_pixels = {}
     column, line = 0, 0
     width, height = size
 
     while column < width and line < height:
-        m, c = add_horizontal(color,
+        m, c = add_horizontal(conf,
+                              color,
                               (column, line),
                               width if line + 1 == height else width - 1)
         mapping, column = mapping + m, column + c
         if column + 1 == width:
-            mapping += add_vertical(color, (column, line), height - line)
+            mapping += add_vertical(conf, color, (column, line), height - line)
             width -= 1
 
         #otherwise we do the same at the next line
@@ -171,7 +170,7 @@ def divide_by_rectangle(img, pixels):
             column += width
     return rectangles
 
-def draw_mapping(img, mapping, filename):
+def draw_mapping(img, mapping, src_path, dest_path):
     img_dest = Image.new("RGB", (img.size[0] * 10, img.size[1] * 10))
     pixels_dest = img_dest.load()
     for rectangle in mapping:
@@ -196,39 +195,80 @@ def draw_mapping(img, mapping, filename):
                        or h == height * 10 - 1:
                         color = (0, 255, 0)
                     pixels_dest[column, line] = color
-    img_dest.save("mapping_" + filename);
-    print('\nImage with mapping is: "mapping_' + filename + '"')
+    img_dest.save(dest_path)
+
+def conf_parser(args, parser):
+    import json
+    conf = json.loads(args.conf)
+    if args.conf != parser.get_default('conf'):
+        if not "all" in conf:
+            raise Exception('Your own conf need a "all" default line (like the example in help).')
+        import re
+        reg = re.compile('[^0-9]*([0-9]+)[^0-9]+([0-9]+)[^0-9]+([0-9]+)[^0-9]*')
+        for colorstr in conf:
+            if colorstr == "all":
+                continue
+            color = tuple(int(x) for x in filter(bool, reg.split(colorstr)))
+            conf[color] = conf.pop(colorstr)
+    return conf
+
+def parse_args():
+    parser = ArgumentParser(description="Legoify")
+    parser.add_argument('source', metavar='source',
+                        help="Source path of image to convert")
+    parser.add_argument('destination', metavar='destination',
+                        help="Destination path of image converted")
+    parser.add_argument('--conf', '-c',
+                        default='{"all": [1, 4, 16]}',
+                        help="Configuration of pieces available by color.\
+                              Only 'bar' are allowed, pieces of 1xN.\
+                              Syntax is JSON based dict, where key is RGB Color\
+                              ,and value a list of N, in addition you have to\
+                              have a line for all other color called 'all'.\
+                              Example:\
+                              {'(255, 255, 255)': [2, 16, 1],\
+                               '(139, 149, 169)': [16],\
+                               'all': [1, 4, 16]}")
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help="Print a debug information")
+    parser.add_argument('--stats', default=False, action='store_true',
+                        help="Print a debug information")
+    return parser
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print('You have to provide a filename in argument')
-        quit()
+    parser = parse_args()
+    args = parser.parse_args()
 
-    filename = sys.argv[1]
-    if not Path(filename).exists():
-        print('You have to provide a REAL filename in argument')
-        quit()
+    #parse the conf given by args
+    conf = conf_parser(args, parser)
+
+    if not Path(args.source).exists():
+        raise Exception('You have to provide a REAL and VALID source path !')
 
     try:
-        img = Image.open(filename)
+        img = Image.open(args.source)
     except OSError as err:
-        print('You have to provide an Image: ', err)
-        quit()
+        raise Exception('You have to provide an Image: ', err)
 
-    print('Processing with: "', filename, '"\n',
-          img.format, img.size, img.mode)
+    if args.debug is True:
+        print('Processing with: "', args.source, '"\n',
+              img.format, img.size, img.mode)
+
     pixels = img.load()
-    colors_stats(img, pixels)
+    if args.stats is True:
+        colors_stats(img, pixels)
 
     # divide by rectangles
     mapping = divide_by_rectangle(img, pixels)
     # divide rectangles by brick
     for rectangle in mapping:
-        rectangle['bricks'] = divide_by_brick(rectangle['size'],
+        rectangle['bricks'] = divide_by_brick(conf,
+                                              rectangle['size'],
                                               rectangle['color'])
 
     #drawing an image with the mapping
-    draw_mapping(img, mapping, filename)
+    draw_mapping(img, mapping, args.source, args.destination)
 
     #bricks stats
-    bricks_stats(mapping)
+    if args.stats is True:
+        bricks_stats(mapping)
